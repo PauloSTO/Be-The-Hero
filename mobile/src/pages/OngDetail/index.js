@@ -1,7 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import { Feather } from '@expo/vector-icons';
-import { useNavigation } from '@react-navigation/native'
+import { useNavigation, useRoute } from '@react-navigation/native'
 import { View, FlatList, Image, Text, TouchableOpacity } from 'react-native';
+//import DropDownItem from 'react-native-drop-down-item';
+
 
 import api from '../../services/api';
 
@@ -9,72 +11,78 @@ import logoImg from '../../assets/logo.png';
 
 import styles from './styles';
 
-export default function Incidents() {
+export default function OngDetail() {
+  const route = useRoute();
   const [incidents, setIncidents] = useState([]);
-  const [total, setTotal] = useState(0);
   const [page, setPage] = useState(1);
   const [loading, setLoading] = useState(false);
 
+
   const navigation = useNavigation();
+  const incident = route.params.incident;
+
+  function navigateBack() {
+    navigation.goBack()
+  }
 
   function navigateToDetail(incident) {
     navigation.navigate('Detail', { incident });
   }
-  function navigateToOngDetail(incident) {
-    navigation.navigate('OngDetail', { incident });
-  }
 
-  async function loadIncidents() {
+  async function loadOngIncidents() {
     if (loading) {
       return;
     }
-
-    if (total > 0 && incidents.length == total) {
-      return;
-    }
-
     setLoading(true);
 
-    const response = await api.get('incidents', {
+    const response = await api.get('profile', {
+      headers: {
+        Authorization: incident.ong_id,
+      },
       params: { page }
-    });
-
-
-    setIncidents([...incidents, ...response.data]);
-    setTotal(response.headers['x-total-count']);
+    }).then(response => {
+      setIncidents(response.data);
+    })
     setPage(page + 1);
     setLoading(false);
   }
 
   useEffect(() => {
-    loadIncidents();
-  }, []);
+    loadOngIncidents();
+  }, [incident.ong_id]);
 
   return (
+
     <View style={styles.container}>
       <View style={styles.header}>
         <Image source={logoImg} />
-        <Text style={styles.headerText}>
-          Total de <Text style={styles.headerTextBold}>{total} casos</Text>.
-        </Text>
+
+        <TouchableOpacity onPress={navigateBack}>
+          <Feather name="arrow-left" size={28} color="#E82041" />
+        </TouchableOpacity>
       </View>
 
-      <Text style={styles.title}>Bem-vindo!</Text>
-      <Text style={styles.description}>Escolha um dos casos abaixo e salve o dia.</Text>
+      <Text style={[styles.title,]}>{incident.name}</Text>
+      <View style={[styles.incident, { marginTop: 10 }, { marginRight: 80 }]}>
+        <Text style={[styles.description]}>{incident.email}</Text>
+        <Text style={styles.description}>(
+        {incident.whatsapp.slice(0, 2)})
+        {incident.whatsapp.slice(2, 7)}-
+        {incident.whatsapp.slice(7, 11)}
+        </Text>
+        <Text style={styles.description}>{incident.city}-{incident.uf}</Text>
+      </View>
 
+      <Text style={[styles.descriptionTitle, { marginTop: 10 }]}>Escolha um dos casos da {incident.name} e salve o dia.</Text>
       <FlatList
         data={incidents}
         style={styles.incidentList}
         keyExtractor={incident => String(incident.id)}
         showsVerticalScrollIndicator={false}
-        onEndReached={loadIncidents}
+        onEndReached={loadOngIncidents}
         onEndReachedThreshold={0.2}
         renderItem={({ item: incident }) => (
           <View style={styles.incident}>
-            <Text style={styles.incidentProperty}>ONG:</Text>
-            <TouchableOpacity onPress={() => navigateToOngDetail(incident)}>
-            <Text style={styles.incidentValue}>{incident.name}</Text>
-            </TouchableOpacity>
 
             <Text style={styles.incidentProperty}>CASO:</Text>
             <Text style={styles.incidentValue}>{incident.title}</Text>
@@ -96,5 +104,5 @@ export default function Incidents() {
         )}
       />
     </View>
-  );
-};
+  )
+}
